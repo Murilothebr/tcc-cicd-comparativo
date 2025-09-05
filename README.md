@@ -6,6 +6,7 @@ O objetivo deste projeto é **comparar as funcionalidades e o desempenho das fer
 ---
 
 ## 🎯 Objetivos
+
 - Identificar as principais características e limitações de cada ferramenta de CI/CD.
 - Avaliar facilidade de configuração, tempo de execução e suporte a integrações.
 - Oferecer recomendações práticas para a escolha da ferramenta mais adequada em diferentes contextos de desenvolvimento.
@@ -13,6 +14,7 @@ O objetivo deste projeto é **comparar as funcionalidades e o desempenho das fer
 ---
 
 ## 🛠️ Tecnologias utilizadas
+
 - **.NET** – Projeto base e execução de testes automatizados com **xUnit**.
 - **Docker** – Criação de imagens containerizadas.
 - **Docker Hub** – Publicação das imagens.
@@ -24,47 +26,41 @@ O objetivo deste projeto é **comparar as funcionalidades e o desempenho das fer
 
 ## 📂 Estrutura do repositório
 
-├── src/ # Código-fonte do projeto base (.NET)
-├── tests/ # Testes automatizados com xUnit
-├── .github/workflows/ # Pipelines do GitHub Actions
-├── .gitlab-ci.yml # Pipeline do GitLab CI/CD
-├── Jenkinsfile # Pipeline declarativa para Jenkins
-├── Dockerfile # Build da aplicação em container
-└── README.md # Este arquivo
+```
+├── src/                  # Código-fonte do projeto base (.NET)
+├── tests/                # Testes automatizados com xUnit
+├── .github/workflows/    # Pipelines do GitHub Actions
+├── .gitlab-ci.yml        # Pipeline do GitLab CI/CD
+├── Jenkinsfile           # Pipeline declarativa para Jenkins
+├── Dockerfile            # Build da aplicação em container
+└── README.md             # Este arquivo
+```
 
----
-
-## ▶️ Como executar
+## Como executar
 
 ### GitHub Actions
+
 - As pipelines são executadas automaticamente no GitHub em cada `push` ou `pull request`, conforme definido em `.github/workflows/`.
 
 ### GitLab CI/CD
+
 - A pipeline é executada automaticamente no GitLab a cada `push`, conforme definido no `.gitlab-ci.yml`.
 
 ### Jenkins
+
 1. Subir um container Jenkins com 2 vCPUs e 4 GB RAM.
 2. Configurar os plugins necessários e criar um pipeline apontando para o `Jenkinsfile`.
 
 ---
 
-## 📊 Métricas coletadas
-Durante a execução das pipelines, foram analisados:
-- Tempo de desenvolvimento inicial (configuração da primeira pipeline funcional).
-- Tempo médio de execução.
-- Estabilidade e consistência nas execuções.
-- Facilidade de monitoramento e depuração.
-- Eficiência no gerenciamento de variáveis e segredos.
-- Suporte a integrações externas (ex.: Trivy).
-
----
-
 ## 📜 Licença
+
 Este repositório é disponibilizado para fins acadêmicos e de pesquisa.  
 Sinta-se à vontade para consultar e adaptar o conteúdo, citando a fonte.
 
 ---
 
 ## 👨‍💻 Autor
+
 **Murilo Nunes Marçal**  
 Trabalho de Conclusão de Curso – UTFPR, 2025
