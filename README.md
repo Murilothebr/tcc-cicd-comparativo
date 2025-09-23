@@ -36,7 +36,7 @@ O objetivo deste projeto é **comparar as funcionalidades e o desempenho das fer
 └── README.md             # Este arquivo
 ```
 
-## Como executar
+## Como executar as pipelines
 
 ### GitHub Actions
 
