@@ -2,17 +2,17 @@ name: ci-dotnet
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  # Ex.: "dockerhubuser/meu-repo"
   IMAGE_NAME: ${{ secrets.DOCKERHUB_REPO }}
+  SOLUTION_PATH: src/Api.sln
 
 jobs:
   build-test-image-scan-push:
@@ -25,56 +25,57 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
           cache: true
 
-      # (1) Restaurar dependências
+      # (1) Restore
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore "$SOLUTION_PATH"
 
-      # (2) Compilar o projeto
+      # (2) Build
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build "$SOLUTION_PATH" --configuration Release --no-restore
 
-      # (3) Executar testes (xUnit)
+      # (3) Test
       - name: Test
-        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test "$SOLUTION_PATH" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
 
-      # (4) Login no Docker Hub
+      # (4) Docker login
       - name: Docker login (Docker Hub)
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      # (4) Build da imagem
+      # (5) Build da imagem
+      # Se o Dockerfile está na RAIZ: use -f Dockerfile e contexto '.'
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME:${{ github.sha }} .
+          docker build -f Dockerfile -t $IMAGE_NAME:${{ github.sha }} .
           echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
 
-      # (5) Verificar vulnerabilidades com Trivy (falha se HIGH/CRITICAL)
+      # (6) Trivy scan (falha em HIGH/CRITICAL)
       - name: Trivy scan (image)
         uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          format: 'table'
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+          format: "table"
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
 
-      # (6) Publicar no Docker Hub (tag por SHA)
+      # (7) Push por SHA
       - name: Push image (SHA tag)
         run: docker push $IMAGE_NAME:${{ env.IMAGE_TAG }}
 
-      # (6) Tag "latest" somente na main
+      # (8) latest apenas na main
       - name: Tag & push latest (main only)
         if: github.ref == 'refs/heads/main'
         run: |
           docker tag $IMAGE_NAME:${{ env.IMAGE_TAG }} $IMAGE_NAME:latest
           docker push $IMAGE_NAME:latest
 
-      # (opcional) Artefatos de teste
+      # (9) Artefatos de teste
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dotnet-test-results
-          path: '**/*.trx'
+          path: "**/*.trx"
