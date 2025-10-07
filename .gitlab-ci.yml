@@ -13,6 +13,7 @@ default:
   interruptible: true
   tags: []
 
+
 build_test:
   stage: build_test
   image: mcr.microsoft.com/dotnet/sdk:8.0
