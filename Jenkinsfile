@@ -53,7 +53,6 @@ pipeline {
               docker push "${IMAGE_NAME}:${gitSha}"
             """
 
-            // Tag latest somente na main
             def onMain = (env.BRANCH_NAME == 'main') || (env.GIT_BRANCH?.endsWith('/main'))
             if (onMain) {
               sh """
