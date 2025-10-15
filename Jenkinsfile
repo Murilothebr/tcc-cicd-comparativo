@@ -3,12 +3,7 @@ pipeline {
   options { disableConcurrentBuilds(); timestamps() }
 
   parameters {
-    string(
-      name: 'IMAGE_NAME',
-      defaultValue: 'murilothebr/tcc-cicd-comparativo',
-      description: 'Docker image repo (ex.: username/repo)',
-      trim: true
-    )
+    string(name: 'IMAGE_NAME', defaultValue: 'murilothebr/tcc-cicd-comparativo', description: 'Docker image repo (ex.: username/repo)', trim: true)
   }
 
   environment {
@@ -20,8 +15,28 @@ pipeline {
 
   stages {
     stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Diagnóstico do workspace') {
       steps {
-        checkout scm
+        sh '''
+          set -euxo pipefail
+          echo "HOST PWD=$(pwd)"
+          echo "HOST ls -la:"
+          ls -la
+          echo "HOST tree -L 2 (se instalado) ou find .:"
+          command -v tree >/dev/null 2>&1 && tree -L 2 || find . -maxdepth 2 -print
+
+          docker run --rm -v "$PWD":/ws -w /ws alpine:3.20 sh -lc '
+            set -eux
+            echo "CONTAINER pwd=$(pwd)"
+            echo "CONTAINER ls -la /ws:"
+            ls -la /ws || true
+            echo "CONTAINER find /ws -maxdepth 2:"
+            find /ws -maxdepth 2 -print || true
+          '
+        '''
       }
     }
 
@@ -36,15 +51,21 @@ pipeline {
             -v "$PWD":/ws -w /ws \
             mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
               set -e
+              echo "pwd=$(pwd)"
+              echo "ls -la (topo):"
+              ls -la || true
+              echo "find . -maxdepth 2:"
+              find . -maxdepth 2 -print || true
+
               TARGET="${SOLUTION_PATH}"
               if [ -n "$TARGET" ] && [ -f "$TARGET" ]; then
                 echo "Using SOLUTION_PATH: $TARGET"
               else
-                TARGET="$(find . -maxdepth 5 -name "*.sln" | head -n1 || true)"
+                TARGET="$(find . -maxdepth 6 -name "*.sln" | head -n1 || true)"
                 if [ -n "$TARGET" ]; then
                   echo "Found .sln: $TARGET"
                 else
-                  TARGET="$(find src -maxdepth 5 -name "*.csproj" | head -n1 || true)"
+                  TARGET="$(find . -maxdepth 6 -path "./src/*" -name "*.csproj" | head -n1 || true)"
                   if [ -n "$TARGET" ]; then
                     echo "Using .csproj: $TARGET"
                   else
@@ -54,9 +75,11 @@ pipeline {
                   fi
                 fi
               fi
+
               dotnet --info
               dotnet restore "$TARGET"
               dotnet build "$TARGET" --configuration Release --no-restore
+
               if echo "$TARGET" | grep -qi "\\.sln$"; then
                 dotnet test "$TARGET" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
               else
@@ -72,11 +95,7 @@ pipeline {
             '
         '''
       }
-      post {
-        always {
-          archiveArtifacts artifacts: '**/*.trx', fingerprint: true
-        }
-      }
+      post { always { archiveArtifacts artifacts: '**/*.trx', fingerprint: true } }
     }
 
     stage('Docker Build, Trivy Scan & Push') {
