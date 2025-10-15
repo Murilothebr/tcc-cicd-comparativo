@@ -50,6 +50,7 @@ docker_build_scan_push:
   script:
     - docker build --pull -t "$IMAGE_NAME:$CI_COMMIT_SHA" .
     - docker run --rm -e DOCKER_HOST="$DOCKER_HOST" -e DOCKER_TLS_CERTDIR="$DOCKER_TLS_CERTDIR" aquasec/trivy:0.54.1 image --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 "$IMAGE_NAME:$CI_COMMIT_SHA"
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHA"
     - |
       if [ "$CI_COMMIT_BRANCH" = "main" ]; then
         docker tag "$IMAGE_NAME:$CI_COMMIT_SHA" "$IMAGE_NAME:gitlab_latest"
