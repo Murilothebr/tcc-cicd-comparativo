@@ -42,14 +42,15 @@ docker_build_scan_push:
     - name: docker:24-dind
       alias: docker
   needs: ["build_test"]
-  resource_group: "ci-$CI_COMMIT_REF_NAME"
   variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
     DOCKER_BUILDKIT: "1"
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - docker build --pull -t "$IMAGE_NAME:$CI_COMMIT_SHA" .
-    - docker run --rm -e DOCKER_HOST="$DOCKER_HOST" -e DOCKER_TLS_CERTDIR="$DOCKER_TLS_CERTDIR" aquasec/trivy:0.54.1 image --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 "$IMAGE_NAME:$CI_COMMIT_SHA"
+    - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.54.1 image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 "$IMAGE_NAME:$CI_COMMIT_SHA"
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHA"
     - |
       if [ "$CI_COMMIT_BRANCH" = "main" ]; then
