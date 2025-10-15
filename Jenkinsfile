@@ -53,7 +53,7 @@ pipeline {
             def onMain = (env.BRANCH_NAME == 'main') || (env.GIT_BRANCH?.endsWith('/main'))
             if (onMain) {
               sh """
-                docker tag "${IMAGE_NAME}:${gitSha}" "${IMAGE_NAME}:latest"
+                docker tag "${IMAGE_NAME}:${gitSha}" "${IMAGE_NAME}:jenkins_latest"
                 docker push "${IMAGE_NAME}:latest"
               """
             }

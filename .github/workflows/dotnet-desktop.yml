@@ -74,7 +74,7 @@ jobs:
       - name: Tag & push latest (main only)
         if: github.ref == 'refs/heads/main'
         run: |
-          docker tag $IMAGE_NAME:${{ env.IMAGE_TAG }} $IMAGE_NAME:latest
+          docker tag $IMAGE_NAME:${{ env.IMAGE_TAG }} $IMAGE_NAME:github_latest
           docker push $IMAGE_NAME:latest
 
       # (9) Artefatos de teste
