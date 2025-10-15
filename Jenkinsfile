@@ -64,7 +64,6 @@ pipeline {
               echo "\$DOCKERHUB_TOKEN" | docker login -u "\$DOCKERHUB_USERNAME" --password-stdin
               docker build --pull -f Dockerfile -t "${IMAGE_NAME}:${gitSha}" .
               docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.54.1 image --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 "${IMAGE_NAME}:${gitSha}"
-              docker push "${IMAGE_NAME}:${gitSha}"
             """
             def onMain = (env.BRANCH_NAME == 'main') || (env.GIT_BRANCH?.endsWith('/main'))
             if (onMain) {
