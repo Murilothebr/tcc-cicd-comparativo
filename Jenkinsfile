@@ -1,12 +1,16 @@
 pipeline {
   agent any
-  options {
-    disableConcurrentBuilds()
-    timestamps()
+  options { disableConcurrentBuilds(); timestamps() }
+
+  parameters {
+    string(name: 'IMAGE_NAME',
+           defaultValue: 'murilothebr/tcc-cicd-comparativo',
+           description: 'Docker image repo (ex.: username/repo)',
+           trim: true)
   }
 
   environment {
-    IMAGE_NAME   = "${env.IMAGE_NAME}"
+    IMAGE_NAME = "${params.IMAGE_NAME}"
     SOLUTION_PATH = "src/Api.sln"
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
     DOTNET_CLI_TELEMETRY_OPTOUT = '1'
@@ -20,23 +24,16 @@ pipeline {
     }
 
     stage('Restore/Build/Test (.NET 8)') {
-      agent {
-        docker {
-          image 'mcr.microsoft.com/dotnet/sdk:8.0'
-          reuseNode true
+        steps {
+            sh '''
+                docker run --rm -v "$PWD":/ws -w /ws mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
+                dotnet --info &&
+                dotnet restore "$SOLUTION_PATH" &&
+                dotnet build "$SOLUTION_PATH" --configuration Release --no-restore &&
+                dotnet test "$SOLUTION_PATH" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"'
+            '''
         }
-      }
-      steps {
-        sh 'dotnet --info'
-        sh 'dotnet restore "$SOLUTION_PATH"'
-        sh 'dotnet build "$SOLUTION_PATH" --configuration Release --no-restore'
-        sh 'dotnet test "$SOLUTION_PATH" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"'
-      }
-      post {
-        always {
-          archiveArtifacts artifacts: '**/*.trx', fingerprint: true
-        }
-      }
+        post { always { archiveArtifacts artifacts: '**/*.trx', fingerprint: true } }
     }
 
     stage('Docker Build, Trivy Scan & Push') {
