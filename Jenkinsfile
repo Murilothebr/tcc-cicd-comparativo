@@ -20,32 +20,32 @@ pipeline {
 
     stage('Restore/Build/Test (.NET 8)') {
       steps {
-        sh """
-            docker run --rm \
-                --volumes-from jenkins \
-                -e SOLUTION_PATH="${SOLUTION_PATH}" \
-                -e DOTNET_SKIP_FIRST_TIME_EXPERIENCE="${DOTNET_SKIP_FIRST_TIME_EXPERIENCE}" \
-                -e DOTNET_CLI_TELEMETRY_OPTOUT="${DOTNET_CLI_TELEMETRY_OPTOUT}" \
-                -w "${WORKSPACE}" \
-                mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
-                set -e
-                TARGET="${SOLUTION_PATH}"
-                if [ -z "$TARGET" ] || [ ! -f "$TARGET" ]; then
-                    TARGET="$(find . -maxdepth 6 -name "*.sln" | head -n1 || true)"
-                    [ -n "$TARGET" ] || TARGET="$(find . -maxdepth 6 -path "./src/*" -name "*.csproj" | head -n1 || true)"
-                    [ -n "$TARGET" ] || { echo "No .sln or .csproj found."; exit 1; }
-                fi
-                dotnet --info
-                dotnet restore "$TARGET"
-                dotnet build "$TARGET" --configuration Release --no-restore
-                if echo "$TARGET" | grep -qi "\\.sln$"; then
-                    dotnet test "$TARGET" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
-                else
-                    TESTS=$(find tests -maxdepth 6 -name "*.csproj" || true)
-                    [ -z "$TESTS" ] || for t in $TESTS; do dotnet test "$t" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"; done
-                fi
-                '
-        """
+        sh '''
+          docker run --rm \
+            --volumes-from jenkins \
+            -e SOLUTION_PATH="$SOLUTION_PATH" \
+            -e DOTNET_SKIP_FIRST_TIME_EXPERIENCE="$DOTNET_SKIP_FIRST_TIME_EXPERIENCE" \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT="$DOTNET_CLI_TELEMETRY_OPTOUT" \
+            -w "$WORKSPACE" \
+            mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
+              set -e
+              TARGET="$SOLUTION_PATH"
+              if [ -z "$TARGET" ] || [ ! -f "$TARGET" ]; then
+                TARGET="$(find . -maxdepth 6 -name "*.sln" | head -n1 || true)"
+                [ -n "$TARGET" ] || TARGET="$(find . -maxdepth 6 -path "./src/*" -name "*.csproj" | head -n1 || true)"
+                [ -n "$TARGET" ] || { echo "No .sln or .csproj found."; exit 1; }
+              fi
+              dotnet --info
+              dotnet restore "$TARGET"
+              dotnet build "$TARGET" --configuration Release --no-restore
+              if echo "$TARGET" | grep -qi "\\.sln$"; then
+                dotnet test "$TARGET" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+              else
+                TESTS=$(find tests -maxdepth 6 -name "*.csproj" || true)
+                [ -z "$TESTS" ] || for t in $TESTS; do dotnet test "$t" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"; done
+              fi
+            '
+        '''
       }
       post { always { archiveArtifacts artifacts: '**/*.trx', fingerprint: true } }
     }
