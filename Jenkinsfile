@@ -47,7 +47,11 @@ pipeline {
             '
         '''
       }
-      post { always { archiveArtifacts artifacts: '**/*.trx', fingerprint: true } }
+      post {
+        always {
+          archiveArtifacts artifacts: '**/*.trx', fingerprint: true, allowEmptyArchive: true
+        }
+      }
     }
 
     stage('Docker Build, Trivy Scan & Push') {
