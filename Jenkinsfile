@@ -18,56 +18,28 @@ pipeline {
       steps { checkout scm }
     }
 
-    stage('Diagnóstico do workspace') {
-      steps {
-        sh '''
-          set -euxo pipefail
-          echo "HOST PWD=$(pwd)"
-          echo "HOST ls -la:"
-          ls -la
-          echo "HOST tree -L 2 (se instalado) ou find .:"
-          command -v tree >/dev/null 2>&1 && tree -L 2 || find . -maxdepth 2 -print
-
-          docker run --rm -v "$PWD":/ws -w /ws alpine:3.20 sh -lc '
-            set -eux
-            echo "CONTAINER pwd=$(pwd)"
-            echo "CONTAINER ls -la /ws:"
-            ls -la /ws || true
-            echo "CONTAINER find /ws -maxdepth 2:"
-            find /ws -maxdepth 2 -print || true
-          '
-        '''
-      }
-    }
-
     stage('Restore/Build/Test (.NET 8)') {
       steps {
-        sh '''
-          set -e
+        sh """
           docker run --rm \
-            -e SOLUTION_PATH="${SOLUTION_PATH}" \
-            -e DOTNET_SKIP_FIRST_TIME_EXPERIENCE="${DOTNET_SKIP_FIRST_TIME_EXPERIENCE}" \
-            -e DOTNET_CLI_TELEMETRY_OPTOUT="${DOTNET_CLI_TELEMETRY_OPTOUT}" \
-            -v "$PWD":/ws -w /ws \
+            --volumes-from jenkins \
+            -e SOLUTION_PATH="\${SOLUTION_PATH}" \
+            -e DOTNET_SKIP_FIRST_TIME_EXPERIENCE="\${DOTNET_SKIP_FIRST_TIME_EXPERIENCE}" \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT="\${DOTNET_CLI_TELEMETRY_OPTOUT}" \
+            -w /var/jenkins_home/workspace/\${JOB_NAME} \
             mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
               set -e
-              echo "pwd=$(pwd)"
-              echo "ls -la (topo):"
-              ls -la || true
-              echo "find . -maxdepth 2:"
-              find . -maxdepth 2 -print || true
-
-              TARGET="${SOLUTION_PATH}"
-              if [ -n "$TARGET" ] && [ -f "$TARGET" ]; then
-                echo "Using SOLUTION_PATH: $TARGET"
+              TARGET="\${SOLUTION_PATH}"
+              if [ -n "\$TARGET" ] && [ -f "\$TARGET" ]; then
+                echo "Using SOLUTION_PATH: \$TARGET"
               else
-                TARGET="$(find . -maxdepth 6 -name "*.sln" | head -n1 || true)"
-                if [ -n "$TARGET" ]; then
-                  echo "Found .sln: $TARGET"
+                TARGET="\$(find . -maxdepth 6 -name "*.sln" | head -n1 || true)"
+                if [ -n "\$TARGET" ]; then
+                  echo "Found .sln: \$TARGET"
                 else
-                  TARGET="$(find . -maxdepth 6 -path "./src/*" -name "*.csproj" | head -n1 || true)"
-                  if [ -n "$TARGET" ]; then
-                    echo "Using .csproj: $TARGET"
+                  TARGET="\$(find . -maxdepth 6 -path "./src/*" -name "*.csproj" | head -n1 || true)"
+                  if [ -n "\$TARGET" ]; then
+                    echo "Using .csproj: \$TARGET"
                   else
                     echo "No .sln or .csproj found."
                     find . -maxdepth 6 -name "*.sln" -o -name "*.csproj" -print || true
@@ -75,25 +47,23 @@ pipeline {
                   fi
                 fi
               fi
-
               dotnet --info
-              dotnet restore "$TARGET"
-              dotnet build "$TARGET" --configuration Release --no-restore
-
-              if echo "$TARGET" | grep -qi "\\.sln$"; then
-                dotnet test "$TARGET" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+              dotnet restore "\$TARGET"
+              dotnet build "\$TARGET" --configuration Release --no-restore
+              if echo "\$TARGET" | grep -qi "\\.sln\$"; then
+                dotnet test "\$TARGET" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
               else
-                TESTS=$(find tests -maxdepth 6 -name "*.csproj" || true)
-                if [ -z "$TESTS" ]; then
+                TESTS=\$(find tests -maxdepth 6 -name "*.csproj" || true)
+                if [ -z "\$TESTS" ]; then
                   echo "No test projects found."
                 else
-                  for t in $TESTS; do
-                    dotnet test "$t" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+                  for t in \$TESTS; do
+                    dotnet test "\$t" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
                   done
                 fi
               fi
             '
-        '''
+        """
       }
       post { always { archiveArtifacts artifacts: '**/*.trx', fingerprint: true } }
     }
