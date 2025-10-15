@@ -3,10 +3,12 @@ pipeline {
   options { disableConcurrentBuilds(); timestamps() }
 
   parameters {
-    string(name: 'IMAGE_NAME',
-           defaultValue: 'murilothebr/tcc-cicd-comparativo',
-           description: 'Docker image repo (ex.: username/repo)',
-           trim: true)
+    string(
+      name: 'IMAGE_NAME',
+      defaultValue: 'murilothebr/tcc-cicd-comparativo',
+      description: 'Docker image repo (ex.: username/repo)',
+      trim: true
+    )
   }
 
   environment {
@@ -24,16 +26,29 @@ pipeline {
     }
 
     stage('Restore/Build/Test (.NET 8)') {
-        steps {
-            sh '''
-                docker run --rm -v "$PWD":/ws -w /ws mcr.microsoft.com/dotnet/sdk:8.0 bash -lc '
-                dotnet --info &&
-                dotnet restore "$SOLUTION_PATH" &&
-                dotnet build "$SOLUTION_PATH" --configuration Release --no-restore &&
-                dotnet test "$SOLUTION_PATH" --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"'
-            '''
+      steps {
+        sh '''
+          docker run --rm \
+            -e SOLUTION_PATH="${SOLUTION_PATH}" \
+            -e DOTNET_SKIP_FIRST_TIME_EXPERIENCE="${DOTNET_SKIP_FIRST_TIME_EXPERIENCE}" \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT="${DOTNET_CLI_TELEMETRY_OPTOUT}" \
+            -v "$PWD":/ws -w /ws \
+            mcr.microsoft.com/dotnet/sdk:8.0 bash -lc "
+              set -e
+              echo Using SOLUTION_PATH=\\"$SOLUTION_PATH\\"
+              test -f \\"$SOLUTION_PATH\\" || { echo 'ERROR: solution not found'; echo 'Found .sln:'; find . -maxdepth 3 -name '*.sln' -print; exit 1; }
+              dotnet --info
+              dotnet restore \\"$SOLUTION_PATH\\"
+              dotnet build   \\"$SOLUTION_PATH\\" --configuration Release --no-restore
+              dotnet test    \\"$SOLUTION_PATH\\" --configuration Release --no-build --logger \\"trx;LogFileName=test-results.trx\\"
+            "
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: '**/*.trx', fingerprint: true
         }
-        post { always { archiveArtifacts artifacts: '**/*.trx', fingerprint: true } }
+      }
     }
 
     stage('Docker Build, Trivy Scan & Push') {
