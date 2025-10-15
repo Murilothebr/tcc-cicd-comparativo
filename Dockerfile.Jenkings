@@ -1,0 +1,18 @@
+FROM jenkins/jenkins:lts-jdk21
+
+USER root
+
+# Base deps + Docker's official repo (Bookworm-friendly)
+RUN apt-get update && apt-get install -y ca-certificates curl gnupg lsb-release \
+ && install -m 0755 -d /etc/apt/keyrings \
+ && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release; echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list \
+ && apt-get update \
+ # CLI only (no daemon) + compose v2 + buildx
+ && apt-get install -y docker-ce-cli docker-compose-plugin docker-buildx-plugin \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/*
+
+# docker build -t jenkins-agent-dind -f Dockerfile.Jenkings . 
+# docker run -d --name jenkins --cpus="2" --memory="4g" --network bridge -p 8080:8080 -p 50000:50000 -v jenkins_home:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins-agent-dind

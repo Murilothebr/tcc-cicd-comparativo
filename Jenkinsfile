@@ -54,7 +54,7 @@ pipeline {
             if (onMain) {
               sh """
                 docker tag "${IMAGE_NAME}:${gitSha}" "${IMAGE_NAME}:jenkins_latest"
-                docker push "${IMAGE_NAME}:latest"
+                docker push "${IMAGE_NAME}:jenkins_latest"
               """
             }
           }
